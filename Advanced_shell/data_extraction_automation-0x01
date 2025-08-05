@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Extract and format Pokémon data from data.json
+# Uses only jq, awk, and sed as required
+
+INPUT_FILE="data.json"
+
+# Extract data using jq and format with awk/sed
+jq -r '
+  "\(.name) \(.height) \(.weight) \(.types[0].type.name)"
+' "$INPUT_FILE" | 
+awk '{
+  name = $1;
+  height = $2 / 10;  # Convert decimeter to meters
+  weight = $3 / 10;  # Convert hectogram to kg
+  type = $4;
+  print name " is of type " type ", weighs " weight "kg, and is " height "m tall."
+}' | 
+sed 's/Electric/Electric/'
