@@ -1,35 +1,41 @@
 #!/usr/bin/env bash
 
-# Directory to store the JSON files
+# Directory to store JSON files
 DATA_DIR="pokemon_data"
+LOG_FILE="$DATA_DIR/error.log"
 
-# Create the directory if it doesn't exist
+# Create output directory and log file if they don't exist
 mkdir -p "$DATA_DIR"
+: > "$LOG_FILE"  # Clear old log
 
 # List of Pokémon to fetch
 POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 
-# Loop through each Pokémon
-for POKEMON in "${POKEMONS[@]}"; do
-  echo "Fetching data for $POKEMON..."
+# Function to fetch data with retry logic
+fetch_pokemon() {
+  local name=$1
+  local url="https://pokeapi.co/api/v2/pokemon/$name"
+  local output_file="$DATA_DIR/$name.json"
+  local attempts=0
+  local max_attempts=3
 
-  # API URL
-  URL="https://pokeapi.co/api/v2/pokemon/$POKEMON"
+  while (( attempts < max_attempts )); do
+    echo "Fetching data for $name... (Attempt $((attempts + 1)))"
+    curl -s --fail "$url" -o "$output_file"
+    if [ $? -eq 0 ] && [ -s "$output_file" ]; then
+      echo "Saved data to $output_file ✅"
+      return 0
+    fi
+    ((attempts++))
+    sleep 2
+  done
 
-  # Output file path
-  OUTPUT_FILE="$DATA_DIR/$POKEMON.json"
+  echo "❌ Failed to fetch data for $name after $max_attempts attempts." | tee -a "$LOG_FILE"
+  rm -f "$output_file" 2>/dev/null
+  return 1
+}
 
-  # Fetch data and save to file
-  curl -s "$URL" -o "$OUTPUT_FILE"
-
-  # Check if the file is not empty (basic error check)
-  if [ -s "$OUTPUT_FILE" ]; then
-    echo "Saved data to $OUTPUT_FILE ✅"
-  else
-    echo "Failed to fetch data for $POKEMON ❌"
-    rm -f "$OUTPUT_FILE"
-  fi
-
-  # Delay to handle rate limiting
-  sleep 2
+# Loop through Pokémon list
+for pokemon in "${POKEMONS[@]}"; do
+  fetch_pokemon "$pokemon"
 done
