@@ -15,7 +15,6 @@ for file in "$DATA_DIR"/*.json; do
   height=$(jq -r '.height' "$file")
   weight=$(jq -r '.weight' "$file")
 
-  # Convert to meters and kilograms (values from API are in decimetres and hectograms)
   height_m=$(awk "BEGIN { printf \"%.2f\", $height / 10 }")
   weight_kg=$(awk "BEGIN { printf \"%.2f\", $weight / 10 }")
 
@@ -25,13 +24,20 @@ done
 echo "CSV Report generated at: $REPORT_FILE"
 echo ""
 
+sed -i 's/ *, */,/g' "$REPORT_FILE"
+
 # Print Report Contents
 cat "$REPORT_FILE"
 echo ""
 
-# Compute Averages using awk (skip header with NR > 1)
-awk -F',' 'NR > 1 { height += $2; weight += $3; count++ }
-  END {
-    printf "\nAverage Height: %.2f m\n", height / count
-    printf "Average Weight: %.2f kg\n", weight / count
-  }' "$REPORT_FILE"
+# Use awk to compute average height and weight
+awk -F',' 'NR > 1 {
+  height += $2
+  weight += $3
+  count++
+}
+END {
+  printf "\nAverage Height: %.2f m\n", height / count
+  printf "Average Weight: %.2f kg\n", weight / count
+}' "$REPORT_FILE"
+
